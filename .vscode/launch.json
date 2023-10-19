@@ -41,6 +41,22 @@
       }
     },
     {
+      "name": "Launch examples/hello-world development2",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "command": "pnpm run debug 'dev' 'examples/hello-world'",
+      "serverReadyAction": {
+        "pattern": "started server on .+, url: (https?://.+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "NEXT_PRIVATE_LOCAL_WEBPACK": "1"
+      }
+    },
+    {
       "name": "Launch examples/hello-world build",
       "type": "node",
       "request": "launch",
