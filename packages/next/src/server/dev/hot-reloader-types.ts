@@ -3,8 +3,8 @@ import type { UrlObject } from 'url'
 import type { Duplex } from 'stream'
 import type { webpack } from 'next/dist/compiled/webpack/webpack'
 import type getBaseWebpackConfig from '../../build/webpack-config'
-import type { RouteMatch } from '../future/route-matches/route-match'
-import type { Update as TurbopackUpdate } from '../../build/swc'
+import type { RouteDefinition } from '../future/route-definitions/route-definition'
+import type { Project, Update as TurbopackUpdate } from '../../build/swc'
 import type { VersionInfo } from './parse-version-info'
 
 export const enum HMR_ACTIONS_SENT_TO_BROWSER {
@@ -17,6 +17,7 @@ export const enum HMR_ACTIONS_SENT_TO_BROWSER {
   SYNC = 'sync',
   BUILT = 'built',
   BUILDING = 'building',
+  FINISH_BUILDING = 'finishBuilding',
   DEV_PAGES_MANIFEST_UPDATE = 'devPagesManifestUpdate',
   TURBOPACK_MESSAGE = 'turbopack-message',
   SERVER_ERROR = 'serverError',
@@ -35,6 +36,10 @@ export interface TurbopackMessageAction {
 
 interface BuildingAction {
   action: HMR_ACTIONS_SENT_TO_BROWSER.BUILDING
+}
+
+interface FinishBuildingAction {
+  action: HMR_ACTIONS_SENT_TO_BROWSER.FINISH_BUILDING
 }
 
 interface SyncAction {
@@ -95,6 +100,7 @@ export type HMR_ACTION_TYPES =
   | TurbopackMessageAction
   | TurbopackConnectedAction
   | BuildingAction
+  | FinishBuildingAction
   | SyncAction
   | BuiltAction
   | AddedPageAction
@@ -107,6 +113,7 @@ export type HMR_ACTION_TYPES =
   | ServerErrorAction
 
 export interface NextJsHotReloaderInterface {
+  turbopackProject?: Project
   activeWebpackConfigs?: Array<Awaited<ReturnType<typeof getBaseWebpackConfig>>>
   serverStats: webpack.Stats | null
   edgeServerStats: webpack.Stats | null
@@ -133,13 +140,13 @@ export interface NextJsHotReloaderInterface {
     page,
     clientOnly,
     appPaths,
-    match,
+    definition,
     isApp,
   }: {
     page: string
     clientOnly: boolean
     appPaths?: ReadonlyArray<string> | null
     isApp?: boolean
-    match?: RouteMatch
+    definition: RouteDefinition | undefined
   }): Promise<void>
 }

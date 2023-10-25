@@ -1,8 +1,8 @@
-import {
+import type {
   StaticGenerationStore,
-  staticGenerationAsyncStorage as _staticGenerationAsyncStorage,
   StaticGenerationAsyncStorage,
 } from '../../../client/components/static-generation-async-storage.external'
+import { staticGenerationAsyncStorage as _staticGenerationAsyncStorage } from '../../../client/components/static-generation-async-storage.external'
 import { CACHE_ONE_YEAR } from '../../../lib/constants'
 import { addImplicitTags, validateTags } from '../../lib/patch-fetch'
 
@@ -51,9 +51,15 @@ export function unstable_cache<T extends Callback>(
     return staticGenerationAsyncStorage.run(
       {
         ...store,
-        fetchCache: 'only-no-store',
+        // force any nested fetches to bypass cache so they revalidate
+        // when the unstable_cache call is revalidated
+        fetchCache: 'force-no-store',
         urlPathname: store?.urlPathname || '/',
-        isStaticGeneration: !!store?.isStaticGeneration,
+        isUnstableCacheCallback: true,
+        isStaticGeneration: store?.isStaticGeneration === true,
+        experimental: {
+          ppr: store?.experimental?.ppr === true,
+        },
       },
       async () => {
         const tags = validateTags(
@@ -71,11 +77,14 @@ export function unstable_cache<T extends Callback>(
             }
           }
         }
-        const implicitTags = addImplicitTags(store)
+        const implicitTags = store ? addImplicitTags(store) : []
 
         const cacheKey = await incrementalCache?.fetchCacheKey(joinedKey)
         const cacheEntry =
           cacheKey &&
+          // when we are nested inside of other unstable_cache's
+          // we should bypass cache similar to fetches
+          store?.fetchCache !== 'force-no-store' &&
           !(
             store?.isOnDemandRevalidate || incrementalCache.isOnDemandRevalidate
           ) &&

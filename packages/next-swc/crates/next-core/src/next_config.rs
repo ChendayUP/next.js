@@ -9,7 +9,6 @@ use turbopack_binding::{
     turbopack::{
         core::{
             changed::any_content_changed_of_module,
-            chunk::ChunkingContext,
             context::AssetContext,
             file_source::FileSource,
             ident::AssetIdent,
@@ -88,6 +87,13 @@ pub struct NextConfig {
     pub trailing_slash: Option<bool>,
     pub asset_prefix: Option<String>,
     pub base_path: Option<String>,
+    pub skip_middleware_url_normalize: Option<bool>,
+    pub skip_trailing_slash_redirect: Option<bool>,
+    pub i18n: Option<I18NConfig>,
+    pub cross_origin: Option<String>,
+    pub dev_indicators: Option<DevIndicatorsConfig>,
+    pub output: Option<OutputType>,
+    pub analytics_id: Option<String>,
 
     ///
     #[serde(rename = "_originalRedirects")]
@@ -96,15 +102,12 @@ pub struct NextConfig {
     // Partially supported
     pub compiler: Option<CompilerConfig>,
 
-    pub output: Option<OutputType>,
+    pub optimize_fonts: Option<bool>,
 
     // unsupported
-    cross_origin: Option<String>,
     amp: AmpConfig,
-    analytics_id: String,
     clean_dist_dir: bool,
     compress: bool,
-    dev_indicators: DevIndicatorsConfig,
     eslint: EslintConfig,
     exclude_default_moment_locales: bool,
     // this can be a function in js land
@@ -113,9 +116,7 @@ pub struct NextConfig {
     generate_build_id: Option<serde_json::Value>,
     generate_etags: bool,
     http_agent_options: HttpAgentConfig,
-    i18n: Option<I18NConfig>,
     on_demand_entries: OnDemandEntriesConfig,
-    optimize_fonts: bool,
     output_file_tracing: bool,
     powered_by_header: bool,
     production_browser_source_maps: bool,
@@ -127,8 +128,6 @@ pub struct NextConfig {
     typescript: TypeScriptConfig,
     use_file_system_public_routes: bool,
     webpack: Option<serde_json::Value>,
-    skip_middleware_url_normalize: Option<bool>,
-    skip_trailing_slash_redirect: Option<bool>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TraceRawVcs)]
@@ -146,7 +145,7 @@ struct EslintConfig {
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TraceRawVcs)]
 #[serde(rename_all = "kebab-case")]
-enum BuildActivityPositions {
+pub enum BuildActivityPositions {
     #[default]
     BottomRight,
     BottomLeft,
@@ -156,9 +155,9 @@ enum BuildActivityPositions {
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TraceRawVcs)]
 #[serde(rename_all = "camelCase")]
-struct DevIndicatorsConfig {
-    build_activity: bool,
-    build_activity_position: BuildActivityPositions,
+pub struct DevIndicatorsConfig {
+    pub build_activity: Option<bool>,
+    pub build_activity_position: Option<BuildActivityPositions>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TraceRawVcs)]
@@ -176,20 +175,20 @@ struct HttpAgentConfig {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs)]
 #[serde(rename_all = "camelCase")]
-struct DomainLocale {
-    default_locale: String,
-    domain: String,
-    http: Option<bool>,
-    locales: Option<Vec<String>>,
+pub struct DomainLocale {
+    pub default_locale: String,
+    pub domain: String,
+    pub http: Option<bool>,
+    pub locales: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs)]
 #[serde(rename_all = "camelCase")]
-struct I18NConfig {
-    default_locale: String,
-    domains: Option<Vec<DomainLocale>>,
-    locale_detection: Option<bool>,
-    locales: Vec<String>,
+pub struct I18NConfig {
+    pub default_locale: String,
+    pub domains: Option<Vec<DomainLocale>>,
+    pub locale_detection: Option<bool>,
+    pub locales: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs)]
@@ -429,6 +428,26 @@ pub struct ExperimentalConfig {
     pub swc_plugins: Option<Vec<(String, serde_json::Value)>>,
     pub turbo: Option<ExperimentalTurboConfig>,
     pub turbotrace: Option<serde_json::Value>,
+    pub external_middleware_rewrites_resolve: Option<bool>,
+    pub scroll_restoration: Option<bool>,
+    pub use_deployment_id: Option<bool>,
+    pub use_deployment_id_server_actions: Option<bool>,
+    pub deployment_id: Option<String>,
+    pub manual_client_base_path: Option<bool>,
+    pub optimistic_client_cache: Option<bool>,
+    pub middleware_prefetch: Option<MiddlewarePrefetchType>,
+    /// optimizeCss can be boolean or critters' option object
+    /// Use Record<string, unknown> as critters doesn't export its Option type
+    /// https://github.com/GoogleChromeLabs/critters/blob/a590c05f9197b656d2aeaae9369df2483c26b072/packages/critters/src/index.d.ts
+    pub optimize_css: Option<serde_json::Value>,
+    pub next_script_workers: Option<bool>,
+    pub web_vitals_attribution: Option<Vec<String>>,
+    /// Enables server actions. Using this feature will enable the
+    /// `react@experimental` for the `app` directory. @see https://nextjs.org/docs/app/api-reference/functions/server-actions
+    server_actions: Option<bool>,
+    /// Allows adjusting body parser size limit for server actions.
+    pub server_actions_body_size_limit: Option<SizeLimit>,
+    pub sri: Option<SubResourceIntegrity>,
 
     // ---
     // UNSUPPORTED
@@ -440,13 +459,11 @@ pub struct ExperimentalConfig {
     case_sensitive_routes: Option<bool>,
     cpus: Option<f64>,
     cra_compat: Option<bool>,
-    deployment_id: Option<String>,
     disable_optimized_loading: Option<bool>,
     disable_postcss_preset_env: Option<bool>,
     esm_externals: Option<serde_json::Value>,
     extension_alias: Option<serde_json::Value>,
     external_dir: Option<bool>,
-    external_middleware_rewrites_resolve: Option<bool>,
     /// If set to `false`, webpack won't fall back to polyfill Node.js modules
     /// in the browser Full list of old polyfills is accessible here:
     /// [webpack/webpack#Module_notound_error.js#L13-L42](https://github.com/webpack/webpack/blob/2a0536cf510768111a3a6dceeb14cb79b9f59273/lib/Module_not_found_error.js#L13-L42)
@@ -459,17 +476,9 @@ pub struct ExperimentalConfig {
     instrumentation_hook: Option<bool>,
     large_page_data_bytes: Option<f64>,
     logging: Option<serde_json::Value>,
-    manual_client_base_path: Option<bool>,
     memory_based_workers_count: Option<bool>,
-    middleware_prefetch: Option<MiddlewarePrefetchType>,
-    next_script_workers: Option<bool>,
-    optimistic_client_cache: Option<bool>,
     /// Optimize React APIs for server builds.
     optimize_server_react: Option<bool>,
-    /// optimizeCss can be boolean or critters' option object
-    /// Use Record<string, unknown> as critters doesn't export its Option type
-    /// https://github.com/GoogleChromeLabs/critters/blob/a590c05f9197b656d2aeaae9369df2483c26b072/packages/critters/src/index.d.ts
-    optimize_css: Option<serde_json::Value>,
     /// Automatically apply the "modularize_imports" optimization to imports of
     /// the specified packages.
     optimize_package_imports: Option<Vec<String>>,
@@ -479,21 +488,13 @@ pub struct ExperimentalConfig {
     /// Using this feature will enable the `react@experimental` for the `app`
     /// directory.
     ppr: Option<bool>,
+    taint: Option<bool>,
     proxy_timeout: Option<f64>,
-    scroll_restoration: Option<bool>,
-    /// Enables server actions. Using this feature will enable the
-    /// `react@experimental` for the `app` directory. @see https://nextjs.org/docs/app/api-reference/functions/server-actions
-    server_actions: Option<bool>,
-    /// Allows adjusting body parser size limit for server actions.
-    server_actions_body_size_limit: Option<SizeLimit>,
     /// enables the minification of server code.
     server_minification: Option<bool>,
     /// Enables source maps generation for the server production bundle.
     server_source_maps: Option<bool>,
-    sri: Option<serde_json::Value>,
     swc_minify: Option<bool>,
-    /// This option is removed
-    swc_minify_debug_options: Option<()>,
     swc_trace_profiling: Option<bool>,
     /// @internal Used by the Next.js internals only.
     trust_host_header: Option<bool>,
@@ -502,9 +503,6 @@ pub struct ExperimentalConfig {
     /// @see https://nextjs.org/docs/app/api-reference/next-config-js/typedRoutes
     typed_routes: Option<bool>,
     url_imports: Option<serde_json::Value>,
-    use_deployment_id: Option<bool>,
-    use_deployment_id_server_actions: Option<bool>,
-    web_vitals_attribution: Option<Vec<String>>,
     /// This option is to enable running the Webpack build in a worker thread
     /// (doesn't apply to Turbopack).
     webpack_build_worker: Option<bool>,
@@ -512,15 +510,21 @@ pub struct ExperimentalConfig {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs)]
+#[serde(rename_all = "camelCase")]
+pub struct SubResourceIntegrity {
+    pub algorithm: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs)]
 #[serde(untagged)]
-enum SizeLimit {
+pub enum SizeLimit {
     Number(f64),
     WithUnit(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs)]
 #[serde(rename_all = "kebab-case")]
-enum MiddlewarePrefetchType {
+pub enum MiddlewarePrefetchType {
     Strict,
     Flexible,
 }
@@ -718,6 +722,35 @@ impl NextConfig {
             self.await?.skip_trailing_slash_redirect.unwrap_or(false),
         ))
     }
+
+    /// Returns the final asset prefix. If an assetPrefix is set, it's used.
+    /// Otherwise, the basePath is used.
+    #[turbo_tasks::function]
+    pub async fn computed_asset_prefix(self: Vc<Self>) -> Result<Vc<Option<String>>> {
+        let this = self.await?;
+
+        Ok(Vc::cell(Some(format!(
+            "{}/_next/",
+            if let Some(asset_prefix) = &this.asset_prefix {
+                asset_prefix
+            } else if let Some(base_path) = &this.base_path {
+                base_path
+            } else {
+                ""
+            }
+            .trim_end_matches('/')
+        ))))
+    }
+
+    #[turbo_tasks::function]
+    pub async fn enable_ppr(self: Vc<Self>) -> Result<Vc<bool>> {
+        Ok(Vc::cell(self.await?.experimental.ppr.unwrap_or(false)))
+    }
+
+    #[turbo_tasks::function]
+    pub async fn enable_taint(self: Vc<Self>) -> Result<Vc<bool>> {
+        Ok(Vc::cell(self.await?.experimental.taint.unwrap_or(false)))
+    }
 }
 
 fn next_configs() -> Vc<Vec<String>> {
@@ -778,7 +811,12 @@ async fn load_next_config_and_custom_routes_internal(
     import_map.insert_exact_alias("styled-jsx", ImportMapping::External(None).into());
     import_map.insert_wildcard_alias("styled-jsx/", ImportMapping::External(None).into());
 
-    let context = node_evaluate_asset_context(execution_context, Some(import_map.cell()), None);
+    let context = node_evaluate_asset_context(
+        execution_context,
+        Some(import_map.cell()),
+        None,
+        "next_config".to_string(),
+    );
     let config_asset = config_file.map(FileSource::new);
 
     let config_changed = config_asset.map_or_else(Completion::immutable, |config_asset| {
@@ -800,7 +838,7 @@ async fn load_next_config_and_custom_routes_internal(
         env,
         config_asset.map_or_else(|| AssetIdent::from_path(project_path), |c| c.ident()),
         context,
-        chunking_context.with_layer("next_config".to_string()),
+        chunking_context,
         None,
         vec![],
         config_changed,

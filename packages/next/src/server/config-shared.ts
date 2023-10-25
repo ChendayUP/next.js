@@ -1,15 +1,15 @@
 import os from 'os'
 import type { webpack } from 'next/dist/compiled/webpack/webpack'
 import type { Header, Redirect, Rewrite } from '../lib/load-custom-routes'
-import {
+import { imageConfigDefault } from '../shared/lib/image-config'
+import type {
   ImageConfig,
   ImageConfigComplete,
-  imageConfigDefault,
 } from '../shared/lib/image-config'
-import { SubresourceIntegrityAlgorithm } from '../build/webpack/plugins/subresource-integrity-plugin'
-import { WEB_VITALS } from '../shared/lib/utils'
+import type { SubresourceIntegrityAlgorithm } from '../build/webpack/plugins/subresource-integrity-plugin'
+import type { WEB_VITALS } from '../shared/lib/utils'
 import type { NextParsedUrlQuery } from './request-meta'
-import { SizeLimit } from '../../types'
+import type { SizeLimit } from '../../types'
 
 export type NextConfigComplete = Required<NextConfig> & {
   images: Required<ImageConfigComplete>
@@ -163,10 +163,6 @@ export interface ExperimentalConfig {
   useDeploymentId?: boolean
   useDeploymentIdServerActions?: boolean
   deploymentId?: string
-  logging?: {
-    level?: 'verbose'
-    fullUrl?: boolean
-  }
   appDocumentPreloading?: boolean
   strictNextHead?: boolean
   clientRouterFilter?: boolean
@@ -222,10 +218,6 @@ export interface ExperimentalConfig {
   swcTraceProfiling?: boolean
   forceSwcTransforms?: boolean
 
-  /**
-   * This option is removed
-   */
-  swcMinifyDebugOptions?: never
   swcPlugins?: Array<[string, Record<string, unknown>]>
   largePageDataBytes?: number
   /**
@@ -301,15 +293,15 @@ export interface ExperimentalConfig {
   instrumentationHook?: boolean
 
   /**
-   * Enables server actions. Using this feature will enable the `react@experimental` for the `app` directory.
-   * @see https://nextjs.org/docs/app/api-reference/functions/server-actions
-   */
-  serverActions?: boolean
-
-  /**
    * Using this feature will enable the `react@experimental` for the `app` directory.
    */
   ppr?: boolean
+
+  /**
+   * Enables experimental taint APIs in React.
+   * Using this feature will enable the `react@experimental` for the `app` directory.
+   */
+  taint?: boolean
 
   /**
    * Allows adjusting body parser size limit for server actions.
@@ -330,6 +322,10 @@ export interface ExperimentalConfig {
    * @internal Used by the Next.js internals only.
    */
   trustHostHeader?: boolean
+  /**
+   * Enables the bundling of node_modules packages (externals) for pages server-side bundles.
+   */
+  bundlePagesExternals?: boolean
 }
 
 export type ExportPathMap = {
@@ -662,6 +658,12 @@ export interface NextConfig extends Record<string, any> {
     }
   >
 
+  logging?: {
+    fetches?: {
+      fullUrl?: boolean
+    }
+  }
+
   /**
    * Enable experimental features. Note that all experimental features are subject to breaking changes in the future.
    */
@@ -769,6 +771,7 @@ export const defaultConfig: NextConfig = {
     turbotrace: undefined,
     typedRoutes: false,
     instrumentationHook: false,
+    bundlePagesExternals: false,
   },
 }
 
@@ -778,20 +781,4 @@ export async function normalizeConfig(phase: string, config: any) {
   }
   // Support `new Promise` and `async () =>` as return values of the config export
   return await config
-}
-
-export function validateConfig(userConfig: NextConfig): {
-  errors?: Array<any> | null
-} {
-  if (process.env.NEXT_MINIMAL) {
-    return {
-      errors: [],
-    }
-  } else {
-    const configValidator = require('next/dist/next-config-validate.js')
-    configValidator(userConfig)
-    return {
-      errors: configValidator.errors,
-    }
-  }
 }
